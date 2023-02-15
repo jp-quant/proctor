@@ -131,6 +131,7 @@ def plot_result_2(
                 data:pd.DataFrame,
                 x_intersect,
                 y_intersect,
+                prefix = None,
                 f_x:str = "f_x",
                 g_x:str = "g_x",
                 ):
@@ -147,15 +148,43 @@ def plot_result_2(
         title = "Intersection Point: (%s, %s)"%(round(x_intersect, 3), round(y_intersect, 3))
     else:
         title = "No Intersection Point."
+    if prefix is not None:
+        title = "[%s] "%str(prefix) + title
+    
     plt.title(title)
     plt.show()
 
-def validate_test_function_2(func):
+def validate_test_function_2(func, precision = 2):
+    validation_result = []
     for i, df in result.items():
-        x_intersect, y_intersect = func(df)
-        plot_result_2(
-                data = df,
-                x_intersect=x_intersect,
-                y_intersect=y_intersect
-                )
+        x_intersect = None
+        y_intersect = None
+        try:
+            x_intersect, y_intersect = func(df)
+            func_output = str((round(x_intersect, precision), round(y_intersect, precision)))
+        except Exception as e:
+            func_output = "Error: %s"%str(e)
+        plot_result_2(df, x_intersect=x_intersect, y_intersect=y_intersect, prefix = "Test Output #%s"%str(i))
+        
+        correct_x_intersect, correct_y_intersect = _calculate_intersection_point(df)
+        correct_ouput = str((round(correct_x_intersect, precision), round(correct_y_intersect, precision)))
+        plot_result_2(df, x_intersect=correct_x_intersect, y_intersect=correct_y_intersect, prefix = "Correct Output #%s"%str(i))
+        
+        validation_result.append(
+            {
+                'dataset_id': i,
+                'test_output':str(func_output),
+                'correct_output':str(correct_ouput)
+            }
+        )
+    validation_result = pd.DataFrame.from_dict(validation_result)
+    correct_result = validation_result[validation_result['test_output'] == validation_result['correct_output']]
+    score = len(correct_result)/len(validation_result)
+    print("Score: %s"%(round(score*100, 3)) + "%")
+    print("Passed: %s/%s"%(len(correct_result), len(validation_result)))
+
+    incorrect_result = validation_result[validation_result['test_output'] != validation_result['correct_output']]
+    if not incorrect_result.empty:
+        print("Failed Scenarios:")
+        print(incorrect_result)
 #--------------|
