@@ -88,7 +88,7 @@ def validate_test_function_1(func): # first_crossed_index() problem
 
 
 #----| Continuous (more advanced)
-def _calculate_intersection_point(
+def _calculate_intersection_point_old(
                         data:pd.DataFrame,
                         f_x:str = "f_x",
                         g_x:str = "g_x",
@@ -127,6 +127,70 @@ def _calculate_intersection_point(
         prev_d = d.copy()
     
     return (x_intersect,y_intersect)
+
+def _calculate_intersection_point(
+                        data:pd.DataFrame,
+                        f_x:str = "f_x",
+                        g_x:str = "g_x",
+                        )->tuple:
+    assert data.shape[1] >= 2, "DataFrame given needs to have at least 2 columns"
+    assert f_x in data.columns
+    assert g_x in data.columns
+    
+    x_intersect = None
+    y_intersect = None
+
+    def get_intersection(i, prev_i):
+        d = data.loc[i]
+        prev_d = data.loc[prev_i]
+
+        df_dx = (d[f_x] - prev_d[f_x])/(i - prev_i)
+        dg_dx = (d[g_x] - prev_d[g_x])/(i - prev_i)
+
+        # Step 2) Calculate for y-intercepts
+        f0 = d[f_x] - (df_dx * (i))
+        g0 = d[g_x] - (dg_dx * (i))
+
+        # Step 3) Calculate for x-intersect
+        x_intersect = (f0 - g0)/(dg_dx - df_dx)
+
+        # Step 4) Calculate for y-intersect
+        y_intersect = df_dx*(x_intersect) + f0 
+
+        return (x_intersect, y_intersect) 
+    
+
+    starts_higher = (
+                None if data.iloc[0][f_x] == data.iloc[0][g_x]
+                else (
+                    f_x if data.iloc[0][f_x] > data.iloc[0][g_x]
+                    else g_x
+                    )
+                )
+    if starts_higher is None:
+        prev_i = data.index[0]
+        for i in data.index[1:]:
+            if data.loc[i][f_x] != data.loc[i][g_x]:
+                x_intersect, y_intersect = get_intersection(i, prev_i)
+                break
+    else:
+        def row_is_crossed(d)->bool:
+            if starts_higher == f_x:
+                return d[f_x] < d[g_x]
+            else:
+                return d[f_x] > d[g_x]
+        prev_i = data.index[0]
+        for i in data.index[1:]:
+            d = data.loc[i]
+            # next_i = data.index.values[data.index.get_loc(i) + 1]
+            if row_is_crossed(d):
+                x_intersect, y_intersect = get_intersection(i, prev_i)
+                break
+            prev_i = i
+    
+    return (x_intersect,y_intersect)
+
+
 def plot_result_2(
                 data:pd.DataFrame,
                 x_intersect,
